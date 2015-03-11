@@ -6,12 +6,12 @@
 using namespace std;
 // ::::::::::::::::::::::::::::::::::::::::::GPU::::::::::::::::::::::::::::::::
 
-__global__ void KernelNormalMul(int *Mat1,int *Mat2,int *Mat3,int m,int n,int p){
+__global__ void KernelNormalMul(float *Mat1,float *Mat2,float *Mat3,int m,int n,int p){
   int j = threadIdx.y + blockDim.y * blockIdx.y; // row
   int i = threadIdx.x + blockDim.x * blockIdx.x; // col
 
   if((j<m) && (i<p)){
-    int value=0;
+    float value=0.0;
     for(int k=0;k<n;++k){
       value+=Mat1[n*j+k]*Mat2[p*k+i];
     }
@@ -20,10 +20,10 @@ __global__ void KernelNormalMul(int *Mat1,int *Mat2,int *Mat3,int m,int n,int p)
 }
 
 
-__global__ void  KernelTilesMul(int *Mat1,int *Mat2,int *Mat3,int rowM1,int colM1,int colM2){
+__global__ void  KernelTilesMul(float *Mat1,float *Mat2,float *Mat3,int rowM1,int colM1,int colM2){
 
-  __shared__ int Mds[TILE_WIDTH][TILE_WIDTH];
-  __shared__ int Nds[TILE_WIDTH][TILE_WIDTH];
+  __shared__ float Mds[TILE_WIDTH][TILE_WIDTH];
+  __shared__ float Nds[TILE_WIDTH][TILE_WIDTH];
 
   int bx = blockIdx.x;
   int by = blockIdx.y;
@@ -33,7 +33,7 @@ __global__ void  KernelTilesMul(int *Mat1,int *Mat2,int *Mat3,int rowM1,int colM
   int row = by * TILE_WIDTH + ty;
   int col = bx * TILE_WIDTH + tx;
 
-  int Pvalue = 0;
+  float Pvalue = 0.0;
 
 
   for(int k = 0; k < (colM1+TILE_WIDTH-1)/(TILE_WIDTH); ++k){
@@ -41,12 +41,12 @@ __global__ void  KernelTilesMul(int *Mat1,int *Mat2,int *Mat3,int rowM1,int colM
     if(k*TILE_WIDTH + tx < colM1 && row < rowM1){
       Mds[ty][tx] = Mat1[row*colM1 + k*TILE_WIDTH + tx];
     }else{
-      Mds[ty][tx] = 0;
+      Mds[ty][tx] = 0.0;
     }
     if(k*TILE_WIDTH + ty < colM1 && col < colM2){
       Nds[ty][tx] = Mat2[(k*TILE_WIDTH + ty) * colM2 + col];
     }else{
-      Nds[ty][tx] =0;
+      Nds[ty][tx] =0.0;
     }
 
     __syncthreads();
@@ -65,23 +65,23 @@ __global__ void  KernelTilesMul(int *Mat1,int *Mat2,int *Mat3,int rowM1,int colM
 
 
 
-void d_MatrixMult(int *Mat1,int *Mat2,int *Mat3,int rowM1,int colM1,int colM2, int op ){
-  int * d_Mat1;
-  int * d_Mat2;
-  int * d_Mat3;
-  float Blocksize=32; // Bloque de 2 dimensiones 32*32=256  número de blokes= 1024 (1024/256=4)
+void d_MatrixMult(float *Mat1,float *Mat2,float *Mat3,int rowM1,int colM1,int colM2, int op ){
+  float * d_Mat1;
+  float * d_Mat2;
+  float * d_Mat3;
+  float Blocksize=TILE_WIDTH; // Bloque de 2 dimensiones 32*32=256  número de blokes= 1024 (1024/256=4)
   int size1=rowM1*colM1;
   int size2=colM1*colM2;
   int size3=rowM1*colM2;
 
   // 1. Separamos memoria en el device
-  cudaMalloc(&d_Mat1,size1*sizeof(int));
-  cudaMalloc(&d_Mat2,size2*sizeof(int));
-  cudaMalloc(&d_Mat3,size3*sizeof(int));
+  cudaMalloc(&d_Mat1,size1*sizeof(float));
+  cudaMalloc(&d_Mat2,size2*sizeof(float));
+  cudaMalloc(&d_Mat3,size3*sizeof(float));
 
   // 2. Copiamos el valor de las variables de host a las variables del device.
-  cudaMemcpy(d_Mat1, Mat1,size1*sizeof(int),cudaMemcpyHostToDevice);
-  cudaMemcpy(d_Mat2, Mat2,size2*sizeof(int),cudaMemcpyHostToDevice);
+  cudaMemcpy(d_Mat1, Mat1,size1*sizeof(float),cudaMemcpyHostToDevice);
+  cudaMemcpy(d_Mat2, Mat2,size2*sizeof(float),cudaMemcpyHostToDevice);
   // 3. Lógica de bloques e hilos, elementos para realizar la parelelización.
   dim3 dimGrid(ceil(colM2/Blocksize),ceil(rowM1/Blocksize),1);
   //dim3 dimGrid((m+Blocksize-1)/Blocksize,(p+Blocksize-1)/Blocksize,1);
@@ -91,7 +91,7 @@ void d_MatrixMult(int *Mat1,int *Mat2,int *Mat3,int rowM1,int colM1,int colM2, i
     KernelTilesMul<<<dimGrid,dimBlock>>>(d_Mat1,d_Mat2,d_Mat3,rowM1,colM1,colM2);
   }
   // 5. Copiamos el resultado para mostrar en el I/O del host.
-  cudaMemcpy (Mat3,d_Mat3,size3*sizeof(int),cudaMemcpyDeviceToHost);
+  cudaMemcpy (Mat3,d_Mat3,size3*sizeof(float),cudaMemcpyDeviceToHost);
   // 6. Liberamos memoria.
   cudaFree(d_Mat3);
 }
@@ -99,11 +99,11 @@ void d_MatrixMult(int *Mat1,int *Mat2,int *Mat3,int rowM1,int colM1,int colM2, i
 // :::::::::::::::::::::::::::::::::::::::Normal::::::::::::::::::::::::::::::::
 
 
-void h_Mul_Mat(int *Mat1,int *Mat2, int *Mat3,int m,int n,int p){
+void h_Mul_Mat(float *Mat1,float *Mat2, float *Mat3,int m,int n,int p){
 
   for(int i=0;i<m;i++){
     for(int j=0;j<p;j++){
-      int value=0;
+      float value=0.0;
       for(int k=0;k<n;k++){
         value+=Mat1[n*i+k]*Mat2[p*k+j];
       }
@@ -112,14 +112,14 @@ void h_Mul_Mat(int *Mat1,int *Mat2, int *Mat3,int m,int n,int p){
   }
 }
 
-void llena_mat(int *Mat, int Value,int m,int n){// ver matriz como vector serial.
+void llena_mat(float *Mat, float Value,int m,int n){// ver matriz como vector serial.
   int size=n*m; // matriz lineal
   for(int i =0 ; i<size ; i++){
     Mat[i]=Value;
   }
 }
 
-void mostrar_mat(int *Mat,int m,int n){//
+void mostrar_mat(float *Mat,int m,int n){//
   int size=n*m; // matriz lineal
   for (int i=0;i<size;i++) {
     if(i%n==0 && n!=0){
@@ -131,9 +131,20 @@ void mostrar_mat(int *Mat,int m,int n){//
 }
 
 
-int check_mat(int *Mat1,int *Mat2,int m,int p){
+int check_mat(float *Mat1,float *Mat2,int m,int p){
   for(int i=0; i<(m*p);++i){
     if(Mat1[i]!=Mat2[i]){
+      cout<<"Error, Las matrices no son iguales"<<endl;
+      return 0;
+    }
+  }
+  cout<<"Las Matrices son iguales"<<endl;
+  return 0;
+}
+
+int check_mat_float(float *Mat1,float *Mat2,int m,int p){
+  for(int i=0; i<(m*p);++i){
+    if(fabs(Mat1[i]-Mat2[i]) > 0.1){
       cout<<"Error, Las matrices no son iguales"<<endl;
       return 0;
     }
@@ -157,51 +168,53 @@ double diffclock(clock_t clock1,clock_t clock2){
 int main(){
   double T1,T2,T3; // variables de tiempo
 
-  int rowM1=2;
-  int colM1=4;
-  int colM2=4;
-  int *Mat1 = (int*)malloc((rowM1*colM1)*sizeof(int));
-  int *Mat2 = (int*)malloc((colM1*colM2)*sizeof(int));
-  int *Mat3 = (int*)malloc((rowM1*colM2)*sizeof(int));
-  int *Mat4 = (int*)malloc((rowM1*colM2)*sizeof(int));
-  int *Mat5 = (int*)malloc((rowM1*colM2)*sizeof(int));
+  int rowM1=2048;
+  int colM1=1024;
+  int colM2=1200;
+  float *Mat1 = (float*)malloc((rowM1*colM1)*sizeof(float));
+  float *Mat2 = (float*)malloc((colM1*colM2)*sizeof(float));
+  float *Mat3 = (float*)malloc((rowM1*colM2)*sizeof(float));
+  float *Mat4 = (float*)malloc((rowM1*colM2)*sizeof(float));
+  float *Mat5 = (float*)malloc((rowM1*colM2)*sizeof(float));
 
-  llena_mat(Mat1,1,rowM1,colM1);
-  llena_mat(Mat2,1,colM1,colM2);
+  llena_mat(Mat1,1.0,rowM1,colM1);
+  llena_mat(Mat2,2.0,colM1,colM2);
+  llena_mat(Mat3,0.0,rowM1,colM2);
+  llena_mat(Mat4,0.0,rowM1,colM2);
+  llena_mat(Mat5,0.0,rowM1,colM2);
 
   clock_t start = clock();
   h_Mul_Mat(Mat1,Mat2,Mat3,rowM1,colM1,colM2);
   clock_t end = clock();
   T1=diffclock(start,end);
   cout <<"Tiempo secuencial: "<<T1<<endl;
-  mostrar_mat(Mat3,rowM1,colM2);
+  //mostrar_mat(Mat3,rowM1,colM2);
   clock_t start2 = clock();
   d_MatrixMult(Mat1,Mat2,Mat4,rowM1,colM1,colM2,1); // paralelo
   clock_t end2 = clock();
-  mostrar_mat(Mat4,rowM1,colM2);
+  //mostrar_mat(Mat4,rowM1,colM2);
   T2=diffclock(start2,end2);
   cout <<"Tiempo Paralelo: "<<T2<<endl;
   cout<<"Aceleración lograda: "<<T1/T2<<endl;
 
-  check_mat(Mat3,Mat4,rowM1,colM2);
-
+  check_mat_float(Mat3,Mat4,rowM1,colM2);
 
   clock_t start3 = clock();
   d_MatrixMult(Mat1,Mat2,Mat5,rowM1,colM1,colM2,2); // tiles
-  mostrar_mat(Mat5,rowM1,colM2);
+  //mostrar_mat(Mat5,rowM1,colM2);
   clock_t end3 = clock();
   T3=diffclock(start3,end3);
 
   cout <<"Tiempo Paralelo con Tiles: "<<T3<<endl;
   cout<<"Aceleración lograda Respecto a el tiempo paralelo: "<<T2/T3<<endl;
 
-  check_mat(Mat4,Mat5,rowM1,colM2);
+  check_mat_float(Mat4,Mat5,rowM1,colM2);
 
-  free(M1);
-  free(M2);
-  free(M3);
-  free(M4);
-  free(M5);
+  free(Mat1);
+  free(Mat2);
+  free(Mat3);
+  free(Mat4);
+  free(Mat5);
 
   return 0;
 }
