@@ -69,7 +69,7 @@ void d_MatrixMult(int *Mat1,int *Mat2,int *Mat3,int rowM1,int colM1,int colM2, i
   int * d_Mat1;
   int * d_Mat2;
   int * d_Mat3;
-  float Blocksize=32; // Bloque de 2 dimensiones 32*32=256  número de blokes= 1024 (1024/256=4)
+  float Blocksize=TILE_WIDTH; // Bloque de 2 dimensiones 32*32=256  número de blokes= 1024 (1024/256=4)
   int size1=rowM1*colM1;
   int size2=colM1*colM2;
   int size3=rowM1*colM2;
