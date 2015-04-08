@@ -109,7 +109,7 @@ int main(){
     double T1,T2; // Time flags
     double *Vec1 = (double*)malloc((SIZE)*sizeof(double)); // Elements to compute. CPU way
     double *Total2 = (double*)malloc((SIZE)*sizeof(double)); // GPU
-    double *Total1 = (double*)malloc(sizeof(double));; // Total Variables.
+    double *Total1 = (double*)malloc(sizeof(double)); // Total Variables.
 
     // Fill the containers vectors of data
     Fill_vec(Vec1,1.0);
