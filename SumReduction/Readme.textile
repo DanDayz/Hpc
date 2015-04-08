@@ -61,13 +61,6 @@ h3. Gráficas De resultados:
 <img src="img/s4.png" alt="Result"/>
 
 
-%{color:blue}* Aceleración:% 
-
-
-<img src="img/s2.jpg" alt="Img2" />
-<img src="img/s3.jpg" alt="Img3" />
-
-
 ¿Por qué la versión paralela (en este caso) no supera las espectativas?, simple : la manera en que se trata de hacer que el programa llegue a la correctitud castiga severamente la convergencia en tiempo.
 
 Al intentar llenar de 0's las locaciones de los valores no utilizados para que la suma no pierda su correctitud tiene un gran impacto en el algoritmo secuencial. 
