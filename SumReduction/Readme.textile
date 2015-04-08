@@ -4,11 +4,10 @@ h2. Resumen
 
 El algoritmo de la deducción para la suma de un vector aclara partes importantes de la programación paralela. Haciendo énfasis en el uso considerado de diferentes técnicas de optimización para la resolución de un mismo algoritmo.
 
-Primero, para resolver el problema en sí, debemos tener en claro la solución de otro problema [_Sincronización - Global _] . "La 
-sincronización global en cuda no es 
-posible":http://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&uact=8&ved=0CB0QFjAA&url=http%3A%2F%2Fdeveloper.download.nvidia.com%2Fassets%2Fcuda%2Ffiles%2Freduction.pdf&ei=FDwkVef7H4yiNuHNgLgJ&usg=AFQjCNFLImWbGd0_B5ET1oLqbAL3hZu9Xw&sig2=dsoA8ScPRDg_C3J0A7nFrQ&bvm=bv.89947451,d.b2w,además de serlo sería  muy costosa a nivel de hardware,lo que la hace también no práctica, dando el hecho de pensar en otras opciones * -+(que no son tan fáciles como hacer un simple llamado a una barrera de sincronización)+- *, pero son más versátiles y óptimas.
+Primero, para resolver el problema en sí, debemos tener en claro la solución de otro problema [_Sincronización - Global _] . "La
+sincronización global en cuda no es posible": http://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&uact=8&ved=0CB0QFjAA&url=http%3A%2F%2Fdeveloper.download.nvidia.com%2Fassets%2Fcuda%2Ffiles%2Freduction.pdf&ei=FDwkVef7H4yiNuHNgLgJ&usg=AFQjCNFLImWbGd0_B5ET1oLqbAL3hZu9Xw&sig2=dsoA8ScPRDg_C3J0A7nFrQ&bvm=bv.89947451,d.b2w,además de serlo sería  muy costosa a nivel de hardware,lo que la hace también no práctica, dando el hecho de pensar en otras opciones * -+(que no son tan fáciles como hacer un simple llamado a una barrera de sincronización)+- *, pero son más versátiles y óptimas.
 
-Por una parte la implementación de técnicas paralelas para la resolución del algoritmo de reducción tendrían que ser orientadas para resolver múltiples problemas que conlleva hacer optimización. Uno de estos problemas son: 
+Por una parte la implementación de técnicas paralelas para la resolución del algoritmo de reducción tendrían que ser orientadas para resolver múltiples problemas que conlleva hacer optimización. Uno de estos problemas son:
 
 * La divergencia entre hilos.
 * Conflictos entre bancos de memoria compartida.
@@ -18,7 +17,7 @@ Por una parte la implementación de técnicas paralelas para la resolución del 
 
 La implementación aquí realizada ataca el problema desde la divergencia de hilos y la mejora al conflicto entre bancos de memorias,también se añade un nuevo enfoque al trabajo realizado añadiendo varios llamados a kernel.
 
-h2. Implementación: 
+h2. Implementación:
 
 Se siguió la implementación y sugerencias de "Optimizing Parallel Reduction - Mark Harris":http://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&uact=8&ved=0CB0QFjAA&url=http%3A%2F%2Fdeveloper.download.nvidia.com%2Fassets%2Fcuda%2Ffiles%2Freduction.pdf&ei=FDwkVef7H4yiNuHNgLgJ&usg=AFQjCNFLImWbGd0_B5ET1oLqbAL3hZu9Xw&sig2=dsoA8ScPRDg_C3J0A7nFrQ&bvm=bv.89947451,d.b2w en la técnica usada Reduction #3: Sequiential Addressing.
 
@@ -30,7 +29,7 @@ Se siguió la implementación y sugerencias de "Optimizing Parallel Reduction - 
 
 h2. Especificaciones:
 
-Especificación parcial de la máquina en la cuál se corrió el algoritmo. 
+Especificación parcial de la máquina en la cuál se corrió el algoritmo.
 
 :::::::::::::::::::::::::::::::::::::::::: CPU ::::::::::::::::::::::::::::::::::::::
 
@@ -45,7 +44,7 @@ Especificación parcial de la máquina en la cuál se corrió el algoritmo.
 * cpu cores       : 4
 
 ::::::::::::::::::::::::::::::::::::::::::: GPU ::::::::::::::::::::::::::::::::::::::::::
- 
+
 * Tesla K40c: 3.5
 * Global memory:   11519mb
 * Shared memory:   48kb
@@ -65,10 +64,8 @@ h3. Gráficas De resultados:
 
 ¿Por qué la versión paralela (en este caso) no supera las espectativas?, simple : la manera en que se trata de hacer que el programa llegue a la correctitud castiga severamente la convergencia en tiempo.
 
-Al intentar llenar de 0's las locaciones de los valores no utilizados para que la suma no pierda su correctitud tiene un gran impacto en el algoritmo secuencial. 
+Al intentar llenar de 0's las locaciones de los valores no utilizados para que la suma no pierda su correctitud tiene un gran impacto en el algoritmo secuencial.
 
 
 @Daniel Diaz Giraldo@ - UTP
  "@Correcto electrónico@(Daniel Diaz)":mailto:daniel@sirius.utp.edu.co
-
-
