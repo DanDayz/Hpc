@@ -29,7 +29,6 @@ Se siguió la implementación y sugerencias de "Optimizing Parallel Reduction - 
 h2. Especificaciones:
 
 Especificación parcial de la máquina en la cuál se corrió el algoritmo.
-
 :::::::::::::::::::::::::::::::::::::::::: CPU ::::::::::::::::::::::::::::::::::::::
 
 * processor       : 1
