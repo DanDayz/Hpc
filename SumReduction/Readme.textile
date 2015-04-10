@@ -67,4 +67,4 @@ Al intentar llenar de 0's las locaciones de los valores no utilizados para que l
 
 
 @Daniel Diaz Giraldo@ - UTP
- "@Correcto electrónico@(Daniel Diaz)":mailto:daniel@sirius.utp.edu.co
+ "@Correo electrónico@(Daniel Diaz)":mailto:daniel@sirius.utp.edu.co
