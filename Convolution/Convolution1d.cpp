@@ -80,8 +80,6 @@ int main(){
   cout<<"Serial Result"<<" At "<<T1<<",Seconds"<<endl;
   Show_vec(VecOut1,N_elements,(char *)"Vector Out");
 
-
-
   return 0;
 }
 
