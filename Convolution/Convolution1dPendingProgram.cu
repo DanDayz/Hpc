@@ -13,7 +13,7 @@ i'm use a Kepler Arch; (the number of blocks that can support is around 2^31)
 
 #define N_elements 50000000
 #define Mask_size  5
-#define TILE_SIZE  1024
+#define TILE_SIZE  32
 
 using namespace std;
 
@@ -21,18 +21,26 @@ __constant__ int Global_Mask[Mask_size];
 
 //:::::::::::::::::::::::::::: Device Kernel Function ::::::::::::::::::::::::::::::
 
-__global__ void convolution1d_notile_constant_kernel(int *In, int *Out){
+__global__ void convolution1d_tiles_constant_kernel(int *In, int *Out){
   unsigned int index = blockIdx.x * blockDim.x + threadIdx.x; // Index 1d iterator.
+  __shared__ int Tile[TILE_SIZE + Mask_size - 1];
+  int n = Mask_size/2;
+  int halo_left_index  = (blockIdx.x - 1 ) * blockDim.x + threadIdx.x;
+  if (threadIdx.x  >= blockDim.x - n ){
+     Tile[threadIdx.x - (blockDim.x - n )] = (halo_left_index < 0) ? 0 : In[halo_left_index];
+  }
+  Tile[n + threadIdx.x] = In[blockIdx.x * blockDim.x + threadIdx.x  ];
+  int halo_right_index = (blockIdx.x + 1 ) * blockDim.x + threadIdx.x;
+  if (threadIdx.x < n) {
+    Tile[n + blockDim.x + threadIdx.x]=  (halo_right_index >= N_elements) ? 0 : In[halo_right_index];
+  }
+__syncthreads();
   int Value = 0;
-  int N_start_point = index - (Mask_size/2);
-  for ( int j = 0; j  < Mask_size; j ++) {
-    if (N_start_point + j >= 0 && N_start_point + j < N_elements) {
-      Value += In[N_start_point + j] * Global_Mask[j];
-    }
+  for (unsigned int j = 0; j  < Mask_size; j ++) {
+    Value += Tile[threadIdx.x + j] * Global_Mask[j];
   }
   Out[index] = Value;
 }
-
 //:: Invocation Function
 
 void d_convolution1d(int *In,int *Out,int *h_Mask){
@@ -52,7 +60,7 @@ void d_convolution1d(int *In,int *Out,int *h_Mask){
   // Thead logic and Kernel call
   dim3 dimGrid(ceil(N_elements/Blocksize),1,1);
   dim3 dimBlock(Blocksize,1,1);
-  convolution1d_notile_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  convolution1d_tiles_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
   cudaDeviceSynchronize();
   // save output result.
   cudaMemcpy (Out,d_Out,Size_of_bytes,cudaMemcpyDeviceToHost);
@@ -127,13 +135,15 @@ int main(){
   Fill_elements(VecIn1,1,N_elements);
   Fill_elements(Mask,1,Mask_size);
 
-  // Sequential
+  //Show_vec(VecIn1,N_elements,(char *)"Vector In");
+  //Show_vec(Mask,Mask_size,(char *)"Mask");
   start = clock();
 	h_Convolution_1d(VecIn1,VecOut1,Mask);
   end = clock();
   T1=diffclock(start,end);
   cout<<"Serial Result"<<" At "<<T1<<",Seconds"<<endl;
-  // Parallel
+  //Show_vec(VecOut1,N_elements,(char *)"Vector Out");
+
   start = clock();
   d_convolution1d(VecIn1,VecOut2,Mask);
   end = clock();
@@ -142,7 +152,9 @@ int main(){
   //Show_vec(VecOut2,N_elements,(char *)"Vector Out");
   cout<<"Total acceleration "<<T1/T2<<"X"<<endl;
   Check_op(VecOut1,VecOut2);
+
   // Releasing Memory
+
   free(VecIn1);
   free(VecOut1);
   free(VecOut2);
