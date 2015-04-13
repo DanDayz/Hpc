@@ -11,9 +11,10 @@ i'm use a Kepler Arch; (the number of blocks that can support is around 2^31)
 #include <bits/stdc++.h>
 #include <cuda.h>
 
-#define N_elements 50000000
+#define N_elements 32
 #define Mask_size  5
 #define TILE_SIZE  1024
+#define BLOCK_SIZE 1024
 
 using namespace std;
 
@@ -21,7 +22,31 @@ __constant__ int Global_Mask[Mask_size];
 
 //:::::::::::::::::::::::::::: Device Kernel Function ::::::::::::::::::::::::::::::
 
-__global__ void convolution1d_notile_constant_kernel(int *In, int *Out){
+__global__ void convolution1d_tiles_constant_kernel(int *In, int *Out){
+  unsigned int index = blockIdx.x * blockDim.x + threadIdx.x; // Index 1d iterator.
+  __shared__ int Tile[TILE_SIZE + Mask_size - 1];
+  int n = Mask_size/2;
+  int halo_left_index  = (blockIdx.x - 1 ) * blockDim.x + threadIdx.x;
+  if (threadIdx.x  >= blockDim.x - n ){
+     Tile[threadIdx.x - (blockDim.x - n )] = (halo_left_index < 0) ? 0 : In[halo_left_index];
+  }
+
+  if(index<N_elements){Tile[n + threadIdx.x] = In[index];
+  }else{Tile[n + threadIdx.x] = 0;}
+  int halo_right_index = (blockIdx.x + 1 ) * blockDim.x + threadIdx.x;
+  if (threadIdx.x < n) {
+    Tile[n + blockDim.x + threadIdx.x]=  (halo_right_index >= N_elements) ? 0 : In[halo_right_index];
+  }
+
+__syncthreads();
+  int Value = 0;
+  for (unsigned int j = 0; j  < Mask_size; j ++) {
+    Value += Tile[threadIdx.x + j] * Global_Mask[j];
+  }
+  Out[index] = Value;
+}
+
+__global__ void convolution1d_notile_noconstant_kernel(int *In, int *Out){
   unsigned int index = blockIdx.x * blockDim.x + threadIdx.x; // Index 1d iterator.
   int Value = 0;
   int N_start_point = index - (Mask_size/2);
@@ -33,13 +58,47 @@ __global__ void convolution1d_notile_constant_kernel(int *In, int *Out){
   Out[index] = Value;
 }
 
+__global__ void convolution1d_constant_kernel(int *In, int *Out){
+
+   int i = blockIdx.x * blockDim.x + threadIdx.x;
+   int Pvalue = 0;
+   int N_start_point = i - (Mask_size/2);
+   for (int j = 0; j < Mask_size; j++){
+     if (N_start_point + j >= 0 && N_start_point + j < N_elements){
+       Pvalue += In[N_start_point + j]*Global_Mask[j];
+     }
+   }
+   Out[i] = Pvalue;
+}
+
+__global__ void convolution1d_constant_simple_kernel(int *In, int *Out){
+
+  int i = blockIdx.x*blockDim.x + threadIdx.x;
+  __shared__ float N_ds[TILE_SIZE];
+  N_ds[threadIdx.x] = In[i];
+  __syncthreads();
+  int This_tile_start_point = blockIdx.x * blockDim.x;
+  int Next_tile_start_point = (blockIdx.x + 1) * blockDim.x;
+  int N_start_point = i - (Mask_size/2);
+  int Pvalue = 0;
+  for (int j = 0; j < Mask_size; j ++){
+    int N_index = N_start_point + j;
+    if (N_index >= 0 && N_index < N_elements){
+      if ((N_index >= This_tile_start_point) && (N_index < Next_tile_start_point)){
+        Pvalue += N_ds[threadIdx.x+j-(Mask_size/2)]*Global_Mask[j];
+      } else{ Pvalue += In[N_index] * Global_Mask[j]; }
+    }
+  }
+  Out[i] = Pvalue;
+}
+
 //:: Invocation Function
 
-void d_convolution1d(int *In,int *Out,int *h_Mask){
+void d_convolution1d(int *In,int *Out,int *h_Mask,int op){
   // Variables
   int Size_of_bytes = N_elements * sizeof(int);
   int *d_In, *d_Out;
-  float Blocksize=TILE_SIZE;
+  float Blocksize=BLOCK_SIZE;
   d_In = (int*)malloc(Size_of_bytes);
   d_Out = (int*)malloc(Size_of_bytes);
   // Memory Allocation in device
@@ -52,7 +111,24 @@ void d_convolution1d(int *In,int *Out,int *h_Mask){
   // Thead logic and Kernel call
   dim3 dimGrid(ceil(N_elements/Blocksize),1,1);
   dim3 dimBlock(Blocksize,1,1);
-  convolution1d_notile_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  if(op==1){
+    cout<<"convolution1d tile constant "<<endl;
+    convolution1d_tiles_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  }
+  if(op==2){
+    cout<<"convolution1d notile noconstant "<<endl;
+    convolution1d_notile_noconstant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  }
+  if (op==3) {
+    cout<<"convolution1d constant notile "<<endl;
+    convolution1d_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  }
+  if (op==4) {
+    cout<<"convolution1d constant tile simple "<<endl;
+    convolution1d_constant_simple_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  }
+
+
   cudaDeviceSynchronize();
   // save output result.
   cudaMemcpy (Out,d_Out,Size_of_bytes,cudaMemcpyDeviceToHost);
@@ -127,22 +203,26 @@ int main(){
   Fill_elements(VecIn1,1,N_elements);
   Fill_elements(Mask,1,Mask_size);
 
-  // Sequential
+  //Show_vec(VecIn1,N_elements,(char *)"Vector In");
+  //Show_vec(Mask,Mask_size,(char *)"Mask");
   start = clock();
 	h_Convolution_1d(VecIn1,VecOut1,Mask);
   end = clock();
   T1=diffclock(start,end);
   cout<<"Serial Result"<<" At "<<T1<<",Seconds"<<endl;
-  // Parallel
+  //Show_vec(VecOut1,N_elements,(char *)"Vector Out");
+
   start = clock();
-  d_convolution1d(VecIn1,VecOut2,Mask);
+  d_convolution1d(VecIn1,VecOut2,Mask,4);
   end = clock();
   T2=diffclock(start,end);
   cout<<"Parallel Result"<<" At "<<T2<<",Seconds"<<endl;
   //Show_vec(VecOut2,N_elements,(char *)"Vector Out");
   cout<<"Total acceleration "<<T1/T2<<"X"<<endl;
   Check_op(VecOut1,VecOut2);
+
   // Releasing Memory
+
   free(VecIn1);
   free(VecOut1);
   free(VecOut2);
