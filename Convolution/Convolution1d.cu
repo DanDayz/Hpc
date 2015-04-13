@@ -186,9 +186,9 @@ int main(){
   Fill_elements(VecIn1,1,N_elements);
   Fill_elements(Mask,1,Mask_size);
 
+  start = clock();
   //Show_vec(VecIn1,N_elements,(char *)"Vector In");
   //Show_vec(Mask,Mask_size,(char *)"Mask");
-  start = clock();
 	h_Convolution_1d(VecIn1,VecOut1,Mask);
   end = clock();
   T1=diffclock(start,end);
@@ -213,7 +213,6 @@ int main(){
 
   return 0;
 }
-
 /*
 1 - convolution1d tile constant
 2 - convolution1d notile noconstant
