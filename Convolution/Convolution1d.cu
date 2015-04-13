@@ -25,47 +25,57 @@ __global__ void convolution1d_tiles_constant_kernel(int *In, int *Out){
   unsigned int index = blockIdx.x * blockDim.x + threadIdx.x; // Index 1d iterator.
   __shared__ int Tile[TILE_SIZE + Mask_size - 1];
   int n = Mask_size/2;
-  int halo_left_index  = (blockIdx.x - 1 )*blockDim.x + threadIdx.x;
+  int halo_left_index  = (blockIdx.x - 1 ) * blockDim.x + threadIdx.x;
   if (threadIdx.x  >= blockDim.x - n ){
      Tile[threadIdx.x - (blockDim.x - n )] = (halo_left_index < 0) ? 0 : In[halo_left_index];
   }
-  Tile[n+threadIdx.x] = In[blockIdx.x * blockDim.x + threadIdx.x  ];
-
+  Tile[n + threadIdx.x] = In[blockIdx.x * blockDim.x + threadIdx.x  ];
   int halo_right_index = (blockIdx.x + 1 ) * blockDim.x + threadIdx.x;
   if (threadIdx.x < n) {
-    Tile[n + blockDim.x + threadIdx.x]=  (halo_left_index >= N_elements) ? 0 : In[halo_right_index];
+    Tile[n + blockDim.x + threadIdx.x]=  (halo_right_index >= N_elements) ? 0 : In[halo_right_index];
   }
 __syncthreads();
   int Value = 0;
   for (unsigned int j = 0; j  < Mask_size; j ++) {
-    Value += Tile[threadIdx.x+j] * Global_Mask[j];
+    Value += Tile[threadIdx.x + j] * Global_Mask[j];
   }
   Out[index] = Value;
 }
 
+__global__ void convolution1d_notile_constant_kernel(int *In, int *Out){
+  unsigned int index = blockIdx.x * blockDim.x + threadIdx.x; // Index 1d iterator.
+  int Value = 0;
+  int N_start_point = index - (Mask_size/2);
+  for ( int j = 0; j  < Mask_size; j ++) {
+    if (N_start_point + j >= 0 && N_start_point + j < N_elements) {
+      Value += In[N_start_point + j] * Global_Mask[j];
+    }
+  }
+  Out[index] = Value;
+}
+
+
 //:: Invocation Function
 
 void d_convolution1d(int *In,int *Out,int *h_Mask){
-  // Var
+  // Variables
   int Size_of_bytes = N_elements * sizeof(int);
-  int *d_In, *d_Out; // *d_Mask;
+  int *d_In, *d_Out;
   float Blocksize=TILE_SIZE;
   d_In = (int*)malloc(Size_of_bytes);
   d_Out = (int*)malloc(Size_of_bytes);
-  //d_Mask = (int*)malloc(Size_of_bytes);
   // Memory Allocation in device
   cudaMalloc((void**)&d_In,Size_of_bytes);
   cudaMalloc((void**)&d_Out,Size_of_bytes);
-  //cudaMalloc((void**)&d_Mask,SIZE*sizeof(int));
-  // Memcpy Host - To - device
+  // Memcpy Host to device
   cudaMemcpy(d_In,In,Size_of_bytes,cudaMemcpyHostToDevice);
   cudaMemcpy(d_Out,Out,Size_of_bytes,cudaMemcpyHostToDevice);
-  //cudaMemcpy(d_Mask,Mask,SIZE*sizeof(int),cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(Global_Mask,h_Mask,Mask_size*sizeof(int)); // avoid cache coherence
   // Thead logic and Kernel call
   dim3 dimGrid(ceil(N_elements/Blocksize),1,1);
   dim3 dimBlock(Blocksize,1,1);
-  convolution1d_tiles_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  //convolution1d_tiles_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  convolution1d_notile_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
   cudaDeviceSynchronize();
   // save output result.
   cudaMemcpy (Out,d_Out,Size_of_bytes,cudaMemcpyDeviceToHost);
@@ -108,6 +118,17 @@ void Show_vec(int *Vec,int Elements,char * Msg ){
   cout<<endl;
 }
 
+int Check_op(int *A , int *B){
+    for(unsigned int i=0; i<N_elements;i++){
+        if(A[i]!=B[i]){
+          cout<<"Bad Work D:"<<endl;
+          return 0;
+        }
+    }
+    cout<<"Nice Work :D"<<endl;
+    return 1;
+}
+
 // :::::::::::::::::::::::::::::::::::Clock Function::::::::::::::::::::::::::::
 double diffclock(clock_t clock1,clock_t clock2){
   double diffticks=clock2-clock1;
@@ -129,41 +150,30 @@ int main(){
   Fill_elements(VecIn1,1,N_elements);
   Fill_elements(Mask,1,Mask_size);
 
-  Show_vec(VecIn1,N_elements,(char *)"Vector In");
-  Show_vec(Mask,Mask_size,(char *)"Mask");
+  //Show_vec(VecIn1,N_elements,(char *)"Vector In");
+  //Show_vec(Mask,Mask_size,(char *)"Mask");
   start = clock();
 	h_Convolution_1d(VecIn1,VecOut1,Mask);
   end = clock();
   T1=diffclock(start,end);
   cout<<"Serial Result"<<" At "<<T1<<",Seconds"<<endl;
-  Show_vec(VecOut1,N_elements,(char *)"Vector Out");
+  //Show_vec(VecOut1,N_elements,(char *)"Vector Out");
 
   start = clock();
   d_convolution1d(VecIn1,VecOut2,Mask);
   end = clock();
   T2=diffclock(start,end);
   cout<<"Parallel Result"<<" At "<<T2<<",Seconds"<<endl;
-  Show_vec(VecOut2,N_elements,(char *)"Vector Out");
+  //Show_vec(VecOut2,N_elements,(char *)"Vector Out");
+  cout<<"Total acceleration "<<T1/T2<<"X"<<endl;
+  Check_op(VecOut1,VecOut2);
+
+  // Releasing Memory
+
+  free(VecIn1);
+  free(VecOut1);
+  free(VecOut2);
+  free(Mask);
+
   return 0;
 }
-
-/*
-
-Book Test Values  int Mask_size = 5;
-#define N_elements 7
-VecIn1[0]=1;
-VecIn1[1]=2;
-VecIn1[2]=3;
-VecIn1[3]=4;
-VecIn1[4]=5;
-VecIn1[5]=6;
-VecIn1[6]=7;
-
-
-Mask[0]=3;
-Mask[1]=4;
-Mask[2]=5;
-Mask[3]=4;
-Mask[4]=3;
-
-*/
