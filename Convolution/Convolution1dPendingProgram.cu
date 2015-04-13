@@ -13,8 +13,8 @@ i'm use a Kepler Arch; (the number of blocks that can support is around 2^31)
 
 #define N_elements 50000000
 #define Mask_size  5
-#define TILE_SIZE  32
-#define BLOCK_SIZE 4
+#define TILE_SIZE  1024
+#define BLOCK_SIZE 1024
 
 using namespace std;
 
@@ -55,6 +55,40 @@ __global__ void convolution1d_notile_noconstant_kernel(int *In, int *Out){
   Out[index] = Value;
 }
 
+__global__ void convolution1d_constant_kernel(int *In, int *Out){
+
+   int i = blockIdx.x * blockDim.x + threadIdx.x;
+   int Pvalue = 0;
+   int N_start_point = i - (Mask_size/2);
+   for (int j = 0; j < Mask_size; j++){
+     if (N_start_point + j >= 0 && N_start_point + j < N_elements){
+       Pvalue += In[N_start_point + j]*Global_Mask[j];
+     }
+   }
+   Out[i] = Pvalue;
+}
+
+__global__ void convolution1d_constant_simple_kernel(int *In, int *Out){
+
+  int i = blockIdx.x*blockDim.x + threadIdx.x;
+  __shared__ float N_ds[TILE_SIZE];
+  N_ds[threadIdx.x] = In[i];
+  __syncthreads();
+  int This_tile_start_point = blockIdx.x * blockDim.x;
+  int Next_tile_start_point = (blockIdx.x + 1) * blockDim.x;
+  int N_start_point = i - (Mask_size/2);
+  int Pvalue = 0;
+  for (int j = 0; j < Mask_size; j ++){
+    int N_index = N_start_point + j;
+    if (N_index >= 0 && N_index < N_elements){
+      if ((N_index >= This_tile_start_point) && (N_index < Next_tile_start_point)){
+        Pvalue += N_ds[threadIdx.x+j-(Mask_size/2)]*Global_Mask[j];
+      } else{ Pvalue += In[N_index] * Global_Mask[j]; }
+    }
+  }
+  Out[i] = Pvalue;
+}
+
 //:: Invocation Function
 
 void d_convolution1d(int *In,int *Out,int *h_Mask,int op){
@@ -75,10 +109,22 @@ void d_convolution1d(int *In,int *Out,int *h_Mask,int op){
   dim3 dimGrid(ceil(N_elements/Blocksize),1,1);
   dim3 dimBlock(Blocksize,1,1);
   if(op==1){
+    cout<<"convolution1d tile constant "<<endl;
     convolution1d_tiles_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
-  }else{
+  }
+  if(op==2){
+    cout<<"convolution1d notile noconstant "<<endl;
     convolution1d_notile_noconstant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
   }
+  if (op==3) {
+    cout<<"convolution1d constant notile "<<endl;
+    convolution1d_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  }
+  if (op==4) {
+    cout<<"convolution1d constant tile simple "<<endl;
+    convolution1d_constant_simple_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  }
+
 
   cudaDeviceSynchronize();
   // save output result.
@@ -164,7 +210,7 @@ int main(){
   //Show_vec(VecOut1,N_elements,(char *)"Vector Out");
 
   start = clock();
-  d_convolution1d(VecIn1,VecOut2,Mask,1);
+  d_convolution1d(VecIn1,VecOut2,Mask,4);
   end = clock();
   T2=diffclock(start,end);
   cout<<"Parallel Result"<<" At "<<T2<<",Seconds"<<endl;
