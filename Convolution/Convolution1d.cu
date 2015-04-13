@@ -9,6 +9,7 @@ i'm use a Kepler Arch; (the number of blocks that can support is around 2^31)
 */
 
 #include <bits/stdc++.h>
+#include <cuda.h>
 
 #define N_elements 7
 #define Mask_size  5
