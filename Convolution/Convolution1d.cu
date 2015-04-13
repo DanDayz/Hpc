@@ -58,19 +58,6 @@ __global__ void convolution1d_notile_noconstant_kernel(int *In, int *Out){
   Out[index] = Value;
 }
 
-__global__ void convolution1d_constant_kernel(int *In, int *Out){
-
-   int i = blockIdx.x * blockDim.x + threadIdx.x;
-   int Pvalue = 0;
-   int N_start_point = i - (Mask_size/2);
-   for (int j = 0; j < Mask_size; j++){
-     if (N_start_point + j >= 0 && N_start_point + j < N_elements){
-       Pvalue += In[N_start_point + j]*Global_Mask[j];
-     }
-   }
-   Out[i] = Pvalue;
-}
-
 __global__ void convolution1d_constant_simple_kernel(int *In, int *Out){
 
   int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -120,10 +107,6 @@ void d_convolution1d(int *In,int *Out,int *h_Mask,int op){
     convolution1d_notile_noconstant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
   }
   if (op==3) {
-    cout<<"convolution1d constant notile "<<endl;
-    convolution1d_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
-  }
-  if (op==4) {
     cout<<"convolution1d constant tile simple "<<endl;
     convolution1d_constant_simple_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
   }
@@ -213,7 +196,7 @@ int main(){
   //Show_vec(VecOut1,N_elements,(char *)"Vector Out");
 
   start = clock();
-  d_convolution1d(VecIn1,VecOut2,Mask,4);
+  d_convolution1d(VecIn1,VecOut2,Mask,3); // 1 --> List of kernels
   end = clock();
   T2=diffclock(start,end);
   cout<<"Parallel Result"<<" At "<<T2<<",Seconds"<<endl;
@@ -230,3 +213,9 @@ int main(){
 
   return 0;
 }
+
+/*
+1 - convolution1d tile constant
+2 - convolution1d notile noconstant
+3 - convolution1d constant tile simple
+*/
