@@ -14,6 +14,7 @@ i'm use a Kepler Arch; (the number of blocks that can support is around 2^31)
 #define N_elements 50000000
 #define Mask_size  5
 #define TILE_SIZE  32
+#define BLOCK_SIZE 4
 
 using namespace std;
 
@@ -41,13 +42,26 @@ __syncthreads();
   }
   Out[index] = Value;
 }
+
+__global__ void convolution1d_notile_noconstant_kernel(int *In, int *Out){
+  unsigned int index = blockIdx.x * blockDim.x + threadIdx.x; // Index 1d iterator.
+  int Value = 0;
+  int N_start_point = index - (Mask_size/2);
+  for ( int j = 0; j  < Mask_size; j ++) {
+    if (N_start_point + j >= 0 && N_start_point + j < N_elements) {
+      Value += In[N_start_point + j] * Global_Mask[j];
+    }
+  }
+  Out[index] = Value;
+}
+
 //:: Invocation Function
 
-void d_convolution1d(int *In,int *Out,int *h_Mask){
+void d_convolution1d(int *In,int *Out,int *h_Mask,int op){
   // Variables
   int Size_of_bytes = N_elements * sizeof(int);
   int *d_In, *d_Out;
-  float Blocksize=TILE_SIZE;
+  float Blocksize=BLOCK_SIZE;
   d_In = (int*)malloc(Size_of_bytes);
   d_Out = (int*)malloc(Size_of_bytes);
   // Memory Allocation in device
@@ -60,7 +74,12 @@ void d_convolution1d(int *In,int *Out,int *h_Mask){
   // Thead logic and Kernel call
   dim3 dimGrid(ceil(N_elements/Blocksize),1,1);
   dim3 dimBlock(Blocksize,1,1);
-  convolution1d_tiles_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  if(op==1){
+    convolution1d_tiles_constant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  }else{
+    convolution1d_notile_noconstant_kernel<<<dimGrid,dimBlock>>>(d_In,d_Out);
+  }
+
   cudaDeviceSynchronize();
   // save output result.
   cudaMemcpy (Out,d_Out,Size_of_bytes,cudaMemcpyDeviceToHost);
@@ -145,7 +164,7 @@ int main(){
   //Show_vec(VecOut1,N_elements,(char *)"Vector Out");
 
   start = clock();
-  d_convolution1d(VecIn1,VecOut2,Mask);
+  d_convolution1d(VecIn1,VecOut2,Mask,1);
   end = clock();
   T2=diffclock(start,end);
   cout<<"Parallel Result"<<" At "<<T2<<",Seconds"<<endl;
