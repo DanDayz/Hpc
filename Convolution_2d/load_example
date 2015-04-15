@@ -1,0 +1,16 @@
+#include <highgui.h>
+#include <iostream>
+#include <cv.h>
+
+using namespace cv;
+using namespace std;
+
+int main(){		
+  
+    Mat image;
+    image = imread("inputs/img1.jpg",0);   // Read the file
+  	imwrite("./outputs/1088015148.png",image);
+   
+
+    return 0;
+}
