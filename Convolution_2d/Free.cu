@@ -47,10 +47,7 @@ void d_convolution1d(Mat image,unsigned char *In,unsigned char *Out,char *h_Mask
   unsigned char *d_In, *d_Out, *d_Mask;
   float Blocksize=BLOCK_SIZE;
   
-  d_In = (unsigned char*)malloc(Size_of_bytes);
-  d_Out = (unsigned char*)malloc(Size_of_bytes);
-  d_Mask = (unsigned char*)malloc(Mask_size_bytes);
-  
+    
   // Memory Allocation in device
   cudaMalloc((void**)&d_In,Size_of_bytes);
   cudaMalloc((void**)&d_Out,Size_of_bytes);
