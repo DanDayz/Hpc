@@ -35,7 +35,23 @@ __device__ unsigned char clamp(int value){
 
 __global__ void convolution2d_global_kernel(unsigned char *In,unsigned char *M, unsigned char *Out,int Mask_Width,int Rowimg,int Colimg){
 
-  
+   unsigned int row = blockIdx.y*blockDim.y+threadIdx.y;
+   unsigned int col = blockIdx.x*blockDim.x+threadIdx.x;
+
+   int Pvalue = 0;
+
+   int N_start_point_row = row - (maskWidth/2);
+   int N_start_point_col = col - (maskWidth/2);
+
+   for(int i = 0; i < Mask_Width; i++){
+       for(int j = 0; j < Mask_Width; j++ ){
+        if((N_start_point_col + j >=0 && N_start_point_col + j < Rowimg)&&(N_start_point_row + i >=0 && N_start_point_row + i < Colimg)){
+               Pvalue += In[(N_start_point_row + i)*Rowimg+(N_start_point_col + j)] * M[i*Mask_Width+j];
+           }
+       }
+   }
+   Out[row*Rowimg+col] = clamp(Pvalue);
+
 }
 
 //:: Invocation Function
@@ -46,8 +62,8 @@ void d_convolution1d(Mat image,unsigned char *In,unsigned char *Out,char *h_Mask
   int Mask_size_bytes =  sizeof(unsigned char)*9;
   unsigned char *d_In, *d_Out, *d_Mask;
   float Blocksize=BLOCK_SIZE;
-  
-    
+
+
   // Memory Allocation in device
   cudaMalloc((void**)&d_In,Size_of_bytes);
   cudaMalloc((void**)&d_Out,Size_of_bytes);
@@ -61,7 +77,7 @@ void d_convolution1d(Mat image,unsigned char *In,unsigned char *Out,char *h_Mask
   dim3 dimGrid(ceil(Row/Blocksize),ceil(Col/Blocksize),1);
   dim3 dimBlock(ceil(Row/Blocksize),ceil(Row/Blocksize),1);
   convolution2d_global_kernel<<<dimGrid,dimBlock>>>(d_In,d_Mask,d_Out,Mask_Width,Row,Col);
-  
+
   cudaDeviceSynchronize();
   // save output result.
   cudaMemcpy (Out,d_Out,Size_of_bytes,cudaMemcpyDeviceToHost);
@@ -82,28 +98,28 @@ double diffclock(clock_t clock1,clock_t clock2){
 // :::::::::::::::::::::::::::::::::::::::Main::::::::::::::::::::::::::::::::::
 
 int main(){
-  
+
   int Mask_Width =  Mask_size;
   int scale = 1;
   int delta = 0;
   int ddepth = CV_8UC1;
   Mat image;
   image = imread("inputs/img1.jpg",0);   // Read the file
-  
+
   Size s = image.size();
-  
+
   int Row = s.width;
   int Col = s.height;
-  
+
   char h_Mask[] = {-1,0,1,-2,0,2,-1,0,1};
   unsigned char *img = (unsigned char*)malloc(sizeof(unsigned char)*Row*Col*image.channels());
   unsigned char *imgOut = (unsigned char*)malloc(sizeof(unsigned char)*Row*Col*image.channels());
-  
-  img = image.data;        
-  
-  
-  
-    
+
+  img = image.data;
+
+
+
+
   //::::::::::::::::::::::::::::::::::::::::: Secuential filter ::::::::::::::::::::::::::::::::::::
 
 
@@ -112,7 +128,7 @@ int main(){
   /// Generate grad_x and grad_y
   Mat grad_x, grad_y;
 
-  /// Gradient X                  
+  /// Gradient X
   //   ( src  , grad_x, ddepth,dx,dy,scale,delta, BORDER_DEFAULT );
   Sobel( image, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
 
@@ -120,15 +136,15 @@ int main(){
   //Sobel( image, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
 
   //
-  
+
   //::::::::::::::::::::::::::::::::::::::::: Parallel filter ::::::::::::::::::::::::::::::::::::
-    
+
   d_convolution1d(image,img,imgOut,h_Mask,Mask_Width,Row,Col,1);
-	
+
   //imwrite("./outputs/1088015148.png",imgOut);
-  
+
   //imwrite("./outputs/1088015148.png",grad_x);
-  
+
   return 0;
 }
 /*
