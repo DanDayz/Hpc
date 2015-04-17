@@ -35,24 +35,7 @@ __device__ unsigned char clamp(int value){
 
 __global__ void convolution2d_global_kernel(unsigned char *In,unsigned char *M, unsigned char *Out,int Mask_Width,int Rowimg,int Colimg){
 
-  unsigned int col = blockIdx.x * blockDim.x + threadIdx.x; // Index 2d iterator.
-  unsigned int row = blockIdx.y * blockDim.y + threadIdx.y; // Index 2d iterator.
   
-  int Value = 0;
-  int N_start_pointx = row - (Mask_Width/2);
-  int N_start_pointy = col - (Mask_Width/2);
- 
- for(int i=0; Mask_Width; i++){
-  for (int j = 0; j  < Mask_Width; j ++) {
-    if (N_start_pointx + j >= 0 && N_start_pointx + j < Rowimg && N_start_pointy + i >= 0 && N_start_pointy + i < Colimg ) {
-      Value += In[(N_start_pointx + i)*Rowimg+(N_start_pointy+j)] * M[i*Mask_Width+j];
-    }
-  
-  }
- }
-  // ojo if
-  if(row*Rowimg+col<Rowimg*Colimg)
-  Out[row*Rowimg+col] = clamp(Value);
 }
 
 //:: Invocation Function
@@ -60,25 +43,26 @@ __global__ void convolution2d_global_kernel(unsigned char *In,unsigned char *M, 
 void d_convolution1d(Mat image,unsigned char *In,unsigned char *Out,char *h_Mask,unsigned int Mask_Width,unsigned int Row,unsigned int Col,int op){
   // Variables
   int Size_of_bytes =  sizeof(unsigned char*)*Row*Col*image.channels();
+  int Mask_size_bytes =  sizeof(unsigned char*)*9;
   unsigned char *d_In, *d_Out, *d_Mask;
   float Blocksize=BLOCK_SIZE;
   
   d_In = (unsigned char*)malloc(Size_of_bytes);
   d_Out = (unsigned char*)malloc(Size_of_bytes);
-  d_Mask = (unsigned char*)malloc(sizeof(unsigned char*)*9);
+  d_Mask = (unsigned char*)malloc(Mask_size_bytes);
   
   // Memory Allocation in device
   cudaMalloc((void**)&d_In,Size_of_bytes);
   cudaMalloc((void**)&d_Out,Size_of_bytes);
-  cudaMalloc((void**)&d_Mask,Size_of_bytes);
+  cudaMalloc((void**)&d_Mask,Mask_size_bytes);
   // Memcpy Host to device
   cudaMemcpy(d_In,In,Size_of_bytes,cudaMemcpyHostToDevice);
   cudaMemcpy(d_Out,Out,Size_of_bytes,cudaMemcpyHostToDevice);
-  cudaMemcpy(d_Mask,h_Mask,Size_of_bytes,cudaMemcpyHostToDevice);
+  cudaMemcpy(d_Mask,h_Mask,Mask_size_bytes,cudaMemcpyHostToDevice);
   //cudaMemcpyToSymbol(Global_Mask,h_Mask,Mask_size*sizeof(int)); // avoid cache coherence
   // Thead logic and Kernel call
   dim3 dimGrid(ceil(Row/Blocksize),ceil(Col/Blocksize),1);
-  dim3 dimBlock(Blocksize,1,1);
+  dim3 dimBlock(ceil(Row/Blocksize),ceil(Row/Blocksize),1);
   convolution2d_global_kernel<<<dimGrid,dimBlock>>>(d_In,d_Mask,d_Out,Mask_Width,Row,Col);
   
   cudaDeviceSynchronize();
@@ -87,7 +71,7 @@ void d_convolution1d(Mat image,unsigned char *In,unsigned char *Out,char *h_Mask
   // Free device memory
   cudaFree(d_In);
   cudaFree(d_Out);
-  //cudaFree(d_Mask);
+  cudaFree(d_Mask);
 }
 
 
