@@ -22,25 +22,37 @@ using namespace std;
 using namespace cv;
 
 
+__device__ unsigned char clamp(int value){
+    if(value < 0)
+        value = 0;
+    else
+        if(value > 255)
+            value = 255;
+    return (unsigned char)value;
+}
+
+
+
 __global__ void convolution2d_global_kernel(unsigned char *In,unsigned char *M, unsigned char *Out,int Mask_Width,int Rowimg,int Colimg){
 
-  int index = blockIdx.x * blockDim.x + threadIdx.x; // Index 1d iterator.
-  int indey = blockIdx.y * blockDim.y + threadIdx.y; // Index 1d iterator.
+  unsigned int col = blockIdx.x * blockDim.x + threadIdx.x; // Index 2d iterator.
+  unsigned int row = blockIdx.y * blockDim.y + threadIdx.y; // Index 2d iterator.
   
   int Value = 0;
-  int N_start_pointx = index - (Mask_size/2);
-  int N_start_pointy = indey - (Mask_size/2);
+  int N_start_pointx = row - (Mask_Width/2);
+  int N_start_pointy = col - (Mask_Width/2);
  
- for(unsigned int i=0; Mask_Width; i++){
-  for (unsigned int j = 0; j  < Mask_Width; j ++) {
-    if (N_start_pointx + i >= 0 && N_start_pointx + i < Rowimg && N_start_pointy + j >= 0 && N_start_pointy + j < Colimg ) {
+ for(int i=0; Mask_Width; i++){
+  for (int j = 0; j  < Mask_Width; j ++) {
+    if (N_start_pointx + j >= 0 && N_start_pointx + j < Rowimg && N_start_pointy + i >= 0 && N_start_pointy + i < Colimg ) {
       Value += In[(N_start_pointx + i)*Rowimg+(N_start_pointy+j)] * M[i*Mask_Width+j];
     }
   
   }
  }
-  // ojo if 
-  Out[index*Rowimg+indey] = Value;
+  // ojo if
+  if(row*Rowimg+col<Rowimg*Colimg)
+  Out[row*Rowimg+col] = clamp(Value);
 }
 
 //:: Invocation Function
@@ -106,7 +118,7 @@ int main(){
   unsigned char *img = (unsigned char*)malloc(sizeof(unsigned char)*Row*Col*image.channels());
   unsigned char *imgOut = (unsigned char*)malloc(sizeof(unsigned char)*Row*Col*image.channels());
   
-  img = image.data;       
+  img = image.data;        
   
   
   
@@ -132,7 +144,9 @@ int main(){
     
   d_convolution1d(image,img,imgOut,h_Mask,Mask_Width,Row,Col,1);
 	
-  imwrite("./outputs/1088015148.png",imgOut);
+  //imwrite("./outputs/1088015148.png",imgOut);
+  
+  //imwrite("./outputs/1088015148.png",grad_x);
   
   return 0;
 }
