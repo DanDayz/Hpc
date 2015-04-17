@@ -42,8 +42,8 @@ __global__ void convolution2d_global_kernel(unsigned char *In,unsigned char *M, 
 
 void d_convolution1d(Mat image,unsigned char *In,unsigned char *Out,char *h_Mask,unsigned int Mask_Width,unsigned int Row,unsigned int Col,int op){
   // Variables
-  int Size_of_bytes =  sizeof(unsigned char*)*Row*Col*image.channels();
-  int Mask_size_bytes =  sizeof(unsigned char*)*9;
+  int Size_of_bytes =  sizeof(unsigned char)*Row*Col*image.channels();
+  int Mask_size_bytes =  sizeof(unsigned char)*9;
   unsigned char *d_In, *d_Out, *d_Mask;
   float Blocksize=BLOCK_SIZE;
   
