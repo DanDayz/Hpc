@@ -49,7 +49,7 @@ __global__ void convolution2d_global_kernel(unsigned char *In,char *M, unsigned 
            }
        }
    }
- 
+
    Out[row*Rowimg+col] = clamp(Pvalue);
 
 }
@@ -103,13 +103,16 @@ int main(){
   int Mask_Width =  Mask_size;
   Mat image;
   image = imread("inputs/img1.jpg",0);   // Read the file
-
   Size s = image.size();
-
   int Row = s.width;
   int Col = s.height;
-
-  char h_Mask[] = {-1,0,1,-2,0,2,-1,0,1};
+  //char h_Mask[] = {-1,0,1,-2,0,2,-1,0,1};
+  //char h_Mask[] = {0,-1,0,-1,5,-1,0,-1,0}; Sharpen
+  //char h_Mask[] = {-1,-1,-1,-1,8,-1,-1,-1,-1}; edge detection 3
+  //char h_Mask[] = {0.11,0.11,0.11,0.11,0.11,0.11,0.11,0.11,0.11};
+  //char h_Mask[] = {-2,-2,0,-2,6,0,0,0,0};
+  //char h_Mask[] = {1,2,1,2,4,2,1,2,1}; gaussian blur
+  char h_Mask[] = {-1,-1,-1,0,0,0,1,1,1}; // A kernel for edge detection
   unsigned char *img = (unsigned char*)malloc(sizeof(unsigned char)*Row*Col*image.channels());
   unsigned char *imgOut = (unsigned char*)malloc(sizeof(unsigned char)*Row*Col*image.channels());
 
@@ -125,7 +128,7 @@ int main(){
   //Sobel( image, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
 
   /// Gradient Y
-  //Sobel( image, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );	
+  //Sobel( image, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
 
   //::::::::::::::::::::::::::::::::::::::::: Parallel filter ::::::::::::::::::::::::::::::::::::
 
@@ -135,8 +138,8 @@ int main(){
   gray_image.data = imgOut;
   imwrite("./outputs/1088015148.png",gray_image);
 
-  free(img);
-  free(imgOut);
+  //free(img);
+  //free(imgOut);
 
   return 0;
 }
@@ -145,4 +148,3 @@ int main(){
 2 - convolution2d notile noconstant
 3 - convolution2d constant tile simple
 */
-
