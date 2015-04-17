@@ -1,4 +1,3 @@
-
 /* Daniel Diaz Giraldo
 
 Restrictions
@@ -14,9 +13,9 @@ i'm use a Kepler Arch; (the number of blocks that can support is around 2^31)
 #include <cv.h>
 
 #define N_elements 32
-#define Mask_size  5
+#define Mask_size  3
 #define TILE_SIZE  1024
-#define BLOCK_SIZE 1024
+#define BLOCK_SIZE 32
 
 using namespace std;
 using namespace cv;
@@ -28,7 +27,7 @@ __device__ unsigned char clamp(int value){
     else
         if(value > 255)
             value = 255;
-    return (unsigned char)value;
+    return  value;
 }
 
 
@@ -50,13 +49,14 @@ __global__ void convolution2d_global_kernel(unsigned char *In,char *M, unsigned 
            }
        }
    }
+ 
    Out[row*Rowimg+col] = clamp(Pvalue);
 
 }
 
 //:: Invocation Function
 
-void d_convolution1d(Mat image,unsigned char *In,unsigned char *Out,char *h_Mask,unsigned int Mask_Width,unsigned int Row,unsigned int Col,int op){
+void d_convolution1d(Mat image,unsigned char *In,unsigned char *Out,char *h_Mask,int Mask_Width,int Row,int Col,int op){
   // Variables
   int Size_of_bytes =  sizeof(unsigned char)*Row*Col*image.channels();
   int Mask_size_bytes =  sizeof(char)*9;
@@ -76,7 +76,7 @@ void d_convolution1d(Mat image,unsigned char *In,unsigned char *Out,char *h_Mask
   //cudaMemcpyToSymbol(Global_Mask,h_Mask,Mask_size*sizeof(int)); // avoid cache coherence
   // Thead logic and Kernel call
   dim3 dimGrid(ceil(Row/Blocksize),ceil(Col/Blocksize),1);
-  dim3 dimBlock(ceil(Row/Blocksize),ceil(Col/Blocksize),1);
+  dim3 dimBlock(Blocksize,Blocksize,1);
   convolution2d_global_kernel<<<dimGrid,dimBlock>>>(d_In,d_Mask,d_Out,Mask_Width,Row,Col);
 
   cudaDeviceSynchronize();
@@ -101,9 +101,6 @@ double diffclock(clock_t clock1,clock_t clock2){
 int main(){
 
   int Mask_Width =  Mask_size;
-  int scale = 1;
-  int delta = 0;
-  int ddepth = CV_8UC1;
   Mat image;
   image = imread("inputs/img1.jpg",0);   // Read the file
 
@@ -117,19 +114,7 @@ int main(){
   unsigned char *imgOut = (unsigned char*)malloc(sizeof(unsigned char)*Row*Col*image.channels());
 
   img = image.data;
-
-  //::::::::::::::::::::::::::::::::::::::::: Secuential filter ::::::::::::::::::::::::::::::::::::
-
-  /// Generate grad_x and grad_y
-  //Mat grad_x, grad_y;
-
-  /// Gradient X
-  //   ( src  , grad_x, ddepth,dx,dy,scale,delta, BORDER_DEFAULT );
-  //Sobel( image, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
-
-  /// Gradient Y
-  //Sobel( image, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
-  //imwrite("./outputs/1088015148.png",grad_x);
+  
 
   //::::::::::::::::::::::::::::::::::::::::: Parallel filter ::::::::::::::::::::::::::::::::::::
 
@@ -149,3 +134,4 @@ int main(){
 2 - convolution2d notile noconstant
 3 - convolution2d constant tile simple
 */
+
