@@ -33,15 +33,15 @@ __device__ unsigned char clamp(int value){
 
 
 
-__global__ void convolution2d_global_kernel(unsigned char *In,unsigned char *M, unsigned char *Out,int Mask_Width,int Rowimg,int Colimg){
+__global__ void convolution2d_global_kernel(unsigned char *In,char *M, unsigned char *Out,int Mask_Width,int Rowimg,int Colimg){
 
    unsigned int row = blockIdx.y*blockDim.y+threadIdx.y;
    unsigned int col = blockIdx.x*blockDim.x+threadIdx.x;
 
    int Pvalue = 0;
 
-   int N_start_point_row = row - (maskWidth/2);
-   int N_start_point_col = col - (maskWidth/2);
+   int N_start_point_row = row - (Mask_Width/2);
+   int N_start_point_col = col - (Mask_Width/2);
 
    for(int i = 0; i < Mask_Width; i++){
        for(int j = 0; j < Mask_Width; j++ ){
@@ -59,8 +59,9 @@ __global__ void convolution2d_global_kernel(unsigned char *In,unsigned char *M, 
 void d_convolution1d(Mat image,unsigned char *In,unsigned char *Out,char *h_Mask,unsigned int Mask_Width,unsigned int Row,unsigned int Col,int op){
   // Variables
   int Size_of_bytes =  sizeof(unsigned char)*Row*Col*image.channels();
-  int Mask_size_bytes =  sizeof(unsigned char)*9;
-  unsigned char *d_In, *d_Out, *d_Mask;
+  int Mask_size_bytes =  sizeof(char)*9;
+  unsigned char *d_In, *d_Out;
+  char *d_Mask;
   float Blocksize=BLOCK_SIZE;
 
 
@@ -75,7 +76,7 @@ void d_convolution1d(Mat image,unsigned char *In,unsigned char *Out,char *h_Mask
   //cudaMemcpyToSymbol(Global_Mask,h_Mask,Mask_size*sizeof(int)); // avoid cache coherence
   // Thead logic and Kernel call
   dim3 dimGrid(ceil(Row/Blocksize),ceil(Col/Blocksize),1);
-  dim3 dimBlock(ceil(Row/Blocksize),ceil(Row/Blocksize),1);
+  dim3 dimBlock(ceil(Row/Blocksize),ceil(Col/Blocksize),1);
   convolution2d_global_kernel<<<dimGrid,dimBlock>>>(d_In,d_Mask,d_Out,Mask_Width,Row,Col);
 
   cudaDeviceSynchronize();
@@ -117,38 +118,34 @@ int main(){
 
   img = image.data;
 
-
-
-
   //::::::::::::::::::::::::::::::::::::::::: Secuential filter ::::::::::::::::::::::::::::::::::::
 
-
-
-
   /// Generate grad_x and grad_y
-  Mat grad_x, grad_y;
+  //Mat grad_x, grad_y;
 
   /// Gradient X
   //   ( src  , grad_x, ddepth,dx,dy,scale,delta, BORDER_DEFAULT );
-  Sobel( image, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+  //Sobel( image, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
 
   /// Gradient Y
   //Sobel( image, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
-
-  //
+  //imwrite("./outputs/1088015148.png",grad_x);
 
   //::::::::::::::::::::::::::::::::::::::::: Parallel filter ::::::::::::::::::::::::::::::::::::
 
   d_convolution1d(image,img,imgOut,h_Mask,Mask_Width,Row,Col,1);
+  Mat gray_image;
+  gray_image.create(Row,Col,CV_8UC1);
+  gray_image.data = imgOut;
+  imwrite("./outputs/1088015148.png",gray_image);
 
-  //imwrite("./outputs/1088015148.png",imgOut);
-
-  //imwrite("./outputs/1088015148.png",grad_x);
+  free(img);
+  free(imgOut);
 
   return 0;
 }
 /*
-1 - convolution1d tile constant
-2 - convolution1d notile noconstant
-3 - convolution1d constant tile simple
+1 - convolution2d tile constant
+2 - convolution2d notile noconstant
+3 - convolution2d constant tile simple
 */
