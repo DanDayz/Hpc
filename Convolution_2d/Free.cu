@@ -114,7 +114,18 @@ int main(){
   unsigned char *imgOut = (unsigned char*)malloc(sizeof(unsigned char)*Row*Col*image.channels());
 
   img = image.data;
-  
+
+   //::::::::::::::::::::::::::::::::::::::::: Secuential filter ::::::::::::::::::::::::::::::::::::
+
+  /// Generate grad_x and grad_y
+  //Mat grad_x, grad_y;
+
+  /// Gradient X
+  //   ( src  , grad_x, ddepth,dx,dy,scale,delta, BORDER_DEFAULT );
+  //Sobel( image, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+
+  /// Gradient Y
+  //Sobel( image, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );	
 
   //::::::::::::::::::::::::::::::::::::::::: Parallel filter ::::::::::::::::::::::::::::::::::::
 
