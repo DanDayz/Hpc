@@ -1,12 +1,4 @@
-/* Daniel Diaz Giraldo
-
-Restrictions
-Mask = 5, Only works whit odd numbers and Mask size <= N _elements;
-N_elements = defined by architecture from machine; (Femin-Maxwell....) in this case
-i'm use a Kepler Arch; (the number of blocks that can support is around 2^31)
-
-*/
-
+// Daniel Diaz Giraldo
 #include <bits/stdc++.h>
 #include <cuda.h>
 #include <highgui.h>
@@ -30,8 +22,6 @@ __device__ unsigned char clamp(int value){
             value = 255;
     return  value;
 }
-
-
 
 __global__ void convolution2d_global_kernel(unsigned char *In,char *M, unsigned char *Out,int Mask_Width,int Rowimg,int Colimg){
 
@@ -78,25 +68,8 @@ __global__ void convolution2d_constant_kernel(unsigned char *In,char *M, unsigne
 
 
 __global__ void convolution2d_tiled_constant_kernel(unsigned char *In,char *M, unsigned char *Out,int Mask_Width,int Rowimg,int Colimg){
+  
 
-   unsigned int row = blockIdx.y*blockDim.y+threadIdx.y;
-   unsigned int col = blockIdx.x*blockDim.x+threadIdx.x;
-   __shared__ int Tile[(TILE_SIZE + Mask_size - 1)*2];
-
-   int
-
-   int Pvalue = 0;
-   int N_start_point_row = row - (Mask_Width/2);
-   int N_start_point_col = col - (Mask_Width/2);
-
-   for(int i = 0; i < Mask_Width; i++){
-       for(int j = 0; j < Mask_Width; j++ ){
-        if((N_start_point_col + j >=0 && N_start_point_col + j < Rowimg)&&(N_start_point_row + i >=0 && N_start_point_row + i < Colimg)){
-               Pvalue += In[(N_start_point_row + i)*Rowimg+(N_start_point_col + j)] * Global_Mask[i*Mask_Width+j];
-           }
-       }
-   }
-   Out[row*Rowimg+col] = clamp(Pvalue);
 }
 
 /*

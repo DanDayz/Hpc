@@ -7,6 +7,16 @@
 using namespace cv;
 using namespace std;
 
+unsigned char clamp(int value){
+    if(value < 0)
+        value = 0;
+    else
+        if(value > 255)
+            value = 255;
+    return  value;
+}
+
+
 
 void filter(unsigned char * In,unsigned char *Out,char *Kernel,int Mask_width,int Rowimg,int Colimg){
 
@@ -18,7 +28,7 @@ void filter(unsigned char * In,unsigned char *Out,char *Kernel,int Mask_width,in
           Value+=In[Gap+j]*Kernel[j];
         }// end if
       }
-      Out[i]=Value;
+      Out[i]=clamp(Value);
   }
 
 }
