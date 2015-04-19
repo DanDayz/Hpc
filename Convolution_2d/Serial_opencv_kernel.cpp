@@ -53,3 +53,5 @@ int main(){
 
   return 0;
 }
+
+// see http://www.programming-techniques.com/2013/02/calculating-convolution-of-image-with-c_2.html
