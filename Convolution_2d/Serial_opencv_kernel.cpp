@@ -3,7 +3,7 @@
 #include <highgui.h>
 #include <cv.h>
 
-#define Mask_size  3
+#define Mask_size  9
 using namespace cv;
 using namespace std;
 
@@ -46,7 +46,7 @@ int main(){
   unsigned char *image_out = (unsigned char *)malloc(sizeof(unsigned char)*Row*Col*channels);
   char Kernel[] = {-1,-1,-1,0,0,0,1,1,1};
   image_data=image.data;
-  filter(image_data,image_out,Kernel,Mask_size,Row,Col);
+  filter(image_data,image_out,Kernel,Mask_size*,Row,Col);
   image_final.create(Row,Col,CV_8UC1);
   image_final.data = image_out;
   imwrite("./outputs/1088015148.png",image_final);
