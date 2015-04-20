@@ -65,6 +65,12 @@ __global__ void gray(unsigned char *In, unsigned char *Out,int Row, int Col){
     }
 }
 
+// :::::::::::::::::::::::::::::::::::Clock Function::::::::::::::::::::::::::::
+double diffclock(clock_t clock1,clock_t clock2){
+  double diffticks=clock2-clock1;
+  double diffms=(diffticks)/(CLOCKS_PER_SEC/1); // /1000 mili
+  return diffms;
+}
 
 void d_convolution2d(Mat image,unsigned char *In,unsigned char *h_Out,char *h_Mask,int Mask_Width,int Row,int Col,int op){
   // Variables
@@ -111,10 +117,13 @@ void d_convolution2d(Mat image,unsigned char *In,unsigned char *h_Out,char *h_Ma
 
 int main(){
 
+    double T1,T2; // Time flags
+    clock_t start,end;// Time flags
+
     int Mask_Width = Mask_size;
     char h_Mask[] = {-1,0,1,-2,0,2,-1,0,1};
     Mat image,result_image;
-    image = imread("inputs/img2.jpg",1);
+    image = imread("inputs/img1.jpg",1);
     Size s = image.size();
     int Row = s.width;
     int Col = s.height;
@@ -122,12 +131,25 @@ int main(){
     unsigned char * h_Out = (unsigned char *)malloc( sizeof(unsigned char)*Row*Col);
 
     In = image.data;
+    start = clock();
     d_convolution2d(image,In,h_Out,h_Mask,Mask_Width,Row,Col,1);
+    end = clock();
+    T1=diffclock(start,end);
+    cout<<" Result Parallel"<<" At "<<T1<<",Seconds"<<endl;
+
+    Mat gray_image_opencv, grad_x, abs_grad_x;
+    start = clock();
+    cvtColor(image, gray_image_opencv, CV_BGR2GRAY);
+    Sobel(gray_image_opencv,grad_x,CV_8UC1,1,0,3,1,0,BORDER_DEFAULT);
+    convertScaleAbs(grad_x, abs_grad_x);
+    end = clock();
+    T2=diffclock(start,end);
+    cout<<" Result secuential"<<" At "<<T2<<",Seconds"<<endl;
+    cout<<"Total acceleration "<<T2/T1<<"X"<<endl;
 
     result_image.create(Col,Row,CV_8UC1);
     result_image.data = h_Out;
-    imwrite("./outputs/1088015148.png",result_image);
-
+    imwrite("./outputs/1088015148.png",grad_x);
 
     return 0;
 }
