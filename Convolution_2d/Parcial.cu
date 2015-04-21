@@ -140,7 +140,7 @@ void d_convolution2d(Mat image,unsigned char *In,unsigned char *h_Out,char *h_Ma
     sobelFilter<<<dimGrid,dimBlock>>>(d_Out,Row,Col,Mask_size,d_Mask,d_sobelOut);
   }
   if(op==2){
-    sobelFilterConstant<<<dimGrid,dimBlock>>>(d_Out,Row,Col,Mask_size,d_Mask,d_sobelOut);
+    sobelFilterConstant<<<dimGrid,dimBlock>>>(d_Out,Row,Col,Mask_size,d_sobelOut);
 
   }
   if(op==3){
