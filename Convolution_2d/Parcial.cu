@@ -40,7 +40,7 @@ __global__ void sobelFilter(unsigned char *In, int Row, int Col, unsigned int Ma
 }
 
 
-__global__ void sobelFilterConstant(unsigned char *In, int Row, int Col, unsigned int Mask_Width,char *Mask,unsigned char *Out){
+__global__ void sobelFilterConstant(unsigned char *In, int Row, int Col, unsigned int Mask_Width,unsigned char *Out){
     unsigned int row = blockIdx.y*blockDim.y+threadIdx.y;
     unsigned int col = blockIdx.x*blockDim.x+threadIdx.x;
     int Pvalue = 0;
@@ -50,7 +50,7 @@ __global__ void sobelFilterConstant(unsigned char *In, int Row, int Col, unsigne
     for(int i = 0; i < Mask_Width; i++){
         for(int j = 0; j < Mask_Width; j++ ){
             if((N_start_point_col + j >=0 && N_start_point_col + j < Row)&&(N_start_point_row + i >=0 && N_start_point_row + i < Col)){
-                Pvalue += In[(N_start_point_row + i)*Row+(N_start_point_col + j)] * Mask[i*Mask_Width+j];
+                Pvalue += In[(N_start_point_row + i)*Row+(N_start_point_col + j)] * Global_Mask[i*Mask_Width+j];
             }
         }
     }
