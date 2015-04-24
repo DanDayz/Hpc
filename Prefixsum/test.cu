@@ -17,7 +17,7 @@ __global__ void kernel_prefix_sum_inefficient(double *g_idata,double *g_odata,in
   unsigned int tid = threadIdx.x;
   unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
 
-  if(i<l && tid !=0){ // bad thing -> severely punished performance.
+  if(i<l && tid !=0){
     sdata[tid] = g_idata[i-1];
   }else{
     sdata[tid] = g_idata[0];
@@ -31,6 +31,11 @@ __global__ void kernel_prefix_sum_inefficient(double *g_idata,double *g_odata,in
 
   // write result for this block to global mem
   g_odata[i] = sdata[tid];
+}
+
+
+__global__ void kernel_prefix_sum_efficient(double *g_idata,double *g_odata,int l){ // Sequential Addressing technique
+
 }
 
 // :::: Calls
@@ -55,10 +60,8 @@ void d_VectorMult(double *Vec1,double *Total){
       dim3 dimBlock(Blocksize,1,1);
       int grid=ceil(temp/Blocksize);
       dim3 dimGrid(grid,1,1);
-
-      KernelNormalVec
+      kernel_prefix_sum_inefficient<<<dimGrid,dimBlock>>>(d_Vec1,d_Total,SIZE);
       cudaDeviceSynchronize();
-
       cudaMemcpy(d_Vec1,d_Total,SIZE*sizeof(double),cudaMemcpyDeviceToDevice);
       temp=ceil(temp/Blocksize);
     }
@@ -93,10 +96,16 @@ void d_VectorMult(double *Vec1,double *Total){
     cout<<endl;
   }
 
-  void Checksum(double *Answer1 , double  *Answer2){
-    if(fabs(Answer1[0]-Answer2[0]) < 0.1) cout<<"Nice Work Guy"<<endl;
-    else  cout<<"BAD Work Guy"<<endl;
-  }
+int Checksum(double *Answer1 , double  *Answer2){
+    for(unsigned int i=0;i<SIZE;i++){
+      if(fabs(Answer1[i]-Answer2[i]) > 0.1){
+        cout<<"BAD Work Guy"<<endl;
+        return 0;
+      }
+    }
+    cout<<"GOOD Work Guy :D"<<endl;
+    return 0;
+}
 
 
   // :::::::::::::::::::::::::::::::::::Clock Function::::::::::::::::::::::::::::
@@ -125,10 +134,12 @@ int main(){
     h_prefix_sum(Vec1,Total1);
     clock_t end = clock();
     T1=diffclock(start,end);
-    Show_vec(Total1);
+    //Show_vec(Total1);
     //cout<<"Serial Result: "<<*Total1<<" At "<<T1<<",Seconds"<<endl;
     // Parallel
-
+    d_VectorMult(Vec1,Total2);
+   	//Show_vec(Total2);
+    Checksum(Total1,Total2);
     // releasing Memory
 
     free(Vec1);
