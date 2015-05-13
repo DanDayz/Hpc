@@ -20,7 +20,7 @@ __global__ void kernel_prefix_sum_inefficient(double *g_idata,double *g_odata,in
   if(i<l && tid !=0){
     sdata[tid] = g_idata[i-1];
   }else{
-    sdata[tid] = g_idata[0];
+    sdata[tid] = 0;
   }
 
   // do reduction in shared mem
@@ -137,6 +137,8 @@ int main(){
     //Show_vec(Total1);
     //cout<<"Serial Result: "<<*Total1<<" At "<<T1<<",Seconds"<<endl;
     // Parallel
+    // first case:
+    Total2[0]=Vec1[0];
     d_VectorMult(Vec1,Total2);
    	//Show_vec(Total2);
     Checksum(Total1,Total2);
