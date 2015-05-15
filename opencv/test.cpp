@@ -7,28 +7,49 @@ using namespace std;
 
 int main(){
 
-  	int scale = 1;
-  	int delta = 0;
-  	int ddepth = CV_8UC1;
-
     Mat image;
-    image = imread("inputs/tpr.jpg",1);   // Read the file
+    unsigned char *image_data;
+    image = imread("inputs/Color-blue.JPG",CV_LOAD_IMAGE_COLOR);   // Read the file
+    Size s = image.size();
+    int width = s.width;
+    int height= s.height;
+    image_data = image.data;
 
-    /// Generate grad_x and grad_y
-    Mat grad_x, grad_y;
-
-    /// Gradient X
-    //   ( src  , grad_x, ddepth,dx,dy,scale,delta, BORDER_DEFAULT );
-    Sobel( image, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
-
-    /// Gradient Y
-    //Sobel( image, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
+    // BGR
+    int a=(int)image_data[0];
+    int b=(int)image_data[1];
+    int c=(int)image_data[2];
+    int d=(int)image_data[3];
+    int e=(int)image_data[3];
+    int f=(int)image_data[3];
+    cout<<a<<endl;
+    cout<<b<<endl;
+    cout<<c<<endl;
+    cout<<d<<endl;
+    cout<<e<<endl;
+    cout<<f<<endl;
+  /*
+    for (int i=0 ; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+          int a=(int)image_data[(i*width+j)*3];
+          cout<<a<<endl;
+        }
+  }*/
 
     namedWindow("image", CV_WINDOW_AUTOSIZE);
-    imshow("image", grad_x);
+    imshow("image", image);
     waitKey();
 
-		imwrite("./outputs/test1.png",grad_x);
+		//imwrite("./outputs/test1.png",image);
 
     return 0;
 }
+
+/*
+string binary = bitset<8>(128).to_string(); //to binary
+cout<<binary<<"\n";
+
+unsigned long decimal = bitset<8>(binary).to_ulong();
+cout<<decimal<<"\n";
+
+*/
