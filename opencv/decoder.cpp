@@ -99,10 +99,14 @@ int step_two(int lc){
   return nc;
 }
 
-void step_three(int height ,int  width,int nc){
+void step_three(int height ,int  width,string file,int nc){
 
-  system("touch outputs/decode.txt");
-  ofstream file("outputs/decode.txt");
+
+  string touch="touch "+file;
+
+  system(touch.c_str());
+
+  ofstream file_to_write(file.c_str());
 
   while(nc>0){
     string binary_char;
@@ -125,7 +129,6 @@ void step_three(int height ,int  width,int nc){
        binary_char.push_back(binary_blue[7]);
        binary_char.push_back(binary_green[7]);
 
-
        if(k<2){
        binary_char.push_back(binary_red[7]);
       }
@@ -134,24 +137,26 @@ void step_three(int height ,int  width,int nc){
       //cout<<"binary char "<<binary_char<<endl;
       char c = strtol( binary_char.c_str(), (char **)NULL, 2);
       //cout<<"char "<<c<<endl;
-      file << c;
+      file_to_write << c;
       nc--;
       if(i==height){break;}
   }
 
-  file.close();
+  file_to_write.close();
 
 }
 
 int main(int argc, char** argv){
 
-  if (argc != 2) {
+  if (argc != 3) {
     cerr << "Wrong call\n";
     return 1;
   }
 
   string foto=argv[1];
-  cout<<"foto a decodificar: "<<foto<<endl;
+  string file=argv[2];
+  cout<<"Imagen a decodificar: "<<foto<<endl;
+  cout<<"Archivo de salida: "<<file<<endl;
   image= imread(foto,CV_LOAD_IMAGE_COLOR);
   uchar *image_data;
   Size s = image.size();
@@ -165,9 +170,9 @@ int main(int argc, char** argv){
   //int lc=step_one(height,width);
   //int nc=step_two(lc);
   //step_three(height,width,nc);
-
-   step_three(height,width,step_two(step_one(height,width)));
-   system("nano outputs/decode.txt");  
+   step_three(height,width,file,step_two(step_one(height,width)));
+   string a="nano "+file;
+   system(a.c_str());
 
     return 0;
 }

@@ -50,7 +50,6 @@ string DecToBin2(int number){
 }
 
 
-
 // insertamos a la imagen el tamaño en bits de la cantidad de caracteres a leer. ejemplo : 3 caracteres -> necesita 000011 (2)
 // reservamos: 6 bits como tamaño máximo de representación.
 int step_one(int height,int width,uchar *image_example_data,uchar *image_data,int nc){
