@@ -12,7 +12,7 @@ void steganography(){
 step_one(int height, int width , Mat image , uchar *image_data , uchar *image_example_data,string mensaje,int *lc){
    // Variables
   int size_of_rgb = sizeof(unsigned char)*Row*Col*image.channels();
-  int size_of_msg = sizeof(string)*mensaje.lengh();
+  int size_of_msg = sizeof(uchar *)*mensaje.lengh();
   uchar *d_image_data,*d_image_example_data,*d_msg;
   float Blocksize=BLOCKSIZE;
 
